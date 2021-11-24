@@ -39,6 +39,8 @@ stages:
 - stage: Deploy
   displayName: deploy to dev
   dependsOn: Build
+  variables:
+   acrsecret: acrauth
   jobs:
     - job: deploy
       displayName: deploy to AKS
@@ -50,3 +52,19 @@ stages:
           buildType: 'current'
           artifactName: 'manifests'
           targetPath: '$(Pipeline.Workspace)/manifests'
+      - task: KubernetesManifest@0
+        inputs:
+          action: 'createSecret'
+          kubernetesServiceConnection: 'akscluster'
+          namespace: 'default'
+          secretType: 'dockerRegistry'
+          secretName: '$(acrsecret)'
+          dockerRegistryEndpoint: 'acrpool'
+      - task: KubernetesManifest@0
+        inputs:
+          action: 'deploy'
+          kubernetesServiceConnection: 'akscluster'
+          namespace: 'default'
+          manifests: |
+           $(Pipeline.Workspace)/manifests/deployment.yml
+           $(Pipeline.Workspace)/manifests/service.yml
